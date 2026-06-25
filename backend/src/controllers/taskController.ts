@@ -29,17 +29,16 @@ class TaskController {
 
     }
 
-    async updateStatus(
+    async update(
         req: Request<{ id: string }>,
         res: Response
     ) {
 
         const { id } = req.params;
-        const { status } = req.body;
 
-        const task = await taskService.updateStatus(
+        const task = await taskService.update(
             id,
-            status
+            req.body
         );
 
         return res.json(task);

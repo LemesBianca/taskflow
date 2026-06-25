@@ -28,15 +28,28 @@ model Project {
 }
 
 model Task {
-  id          String   @id @default(uuid())
+  id          String      @id @default(uuid())
   title       String
   description String?
-  status      Status
-  priority    Priority
+  status      Status      @default(TODO)
+  priority    Priority    @default(MEDIUM)
+  createdAt   DateTime    @default(now())
+
+  projectId   String
+  project     Project     @relation(fields: [projectId], references: [id])
+
+  subtasks    Subtask[]
+}
+
+model Subtask {
+  id          String   @id @default(uuid())
+  title       String
+  status      Status   @default(TODO)
+  priority    Priority @default(MEDIUM)
   createdAt   DateTime @default(now())
 
-  projectId String
-  project   Project @relation(fields: [projectId], references: [id])
+  taskId      String
+  task        Task     @relation(fields: [taskId], references: [id])
 }
 
 enum Status {

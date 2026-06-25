@@ -1,6 +1,5 @@
 import { prisma } from "../prisma/prismaClient";
-import { CreateTaskDTO } from "../types/taskTypes";
-import { Status } from "@prisma/client";
+import { CreateTaskDTO, UpdateTaskDTO } from "../types/taskTypes";
 
 export class TaskService {
 
@@ -8,7 +7,8 @@ export class TaskService {
 
         return prisma.task.findMany({
             include: {
-                project: true
+                project: true,
+                subtasks: true,
             }
         });
 
@@ -16,17 +16,32 @@ export class TaskService {
 
     async create(data: CreateTaskDTO) {
 
+        const { subtasks = [], ...taskData } = data;
+
         return prisma.task.create({
-            data
+            data: {
+                ...taskData,
+                subtasks: subtasks.length > 0
+                    ? {
+                        create: subtasks,
+                    }
+                    : undefined,
+            },
+            include: {
+                subtasks: true,
+            },
         });
 
     }
 
-    async updateStatus(id: string, status: Status) {
+    async update(id: string, data: UpdateTaskDTO) {
 
         return prisma.task.update({
             where: { id },
-            data: { status }
+            data,
+            include: {
+                subtasks: true,
+            },
         });
 
     }

@@ -5,7 +5,11 @@ export class ProjectService {
   async getAll() {
     return prisma.project.findMany({
       include: {
-        tasks: true
+        tasks: {
+          include: {
+            subtasks: true,
+          },
+        },
       }
     });
   }

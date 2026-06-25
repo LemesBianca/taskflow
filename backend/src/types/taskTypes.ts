@@ -6,8 +6,16 @@ export interface CreateTaskDTO {
     status: Status;
     priority: Priority;
     projectId: string;
+    subtasks?: Array<{
+        title: string;
+        status: Status;
+        priority: Priority;
+    }>;
 }
 
 export interface UpdateTaskDTO {
-    status: Status;
+    title?: string;
+    description?: string;
+    status?: Status;
+    priority?: Priority;
 }
