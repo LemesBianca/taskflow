@@ -1,6 +1,28 @@
+import type { Task, TaskPriority, TaskStatus } from "@/types/Task";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
-export async function getTasks() {
+type CreateTaskInput = {
+  title: string;
+  description: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  projectId: string;
+  subtasks: Array<{
+    title: string;
+    status: TaskStatus;
+    priority: TaskPriority;
+  }>;
+};
+
+type UpdateTaskInput = {
+  title?: string;
+  description?: string;
+  status?: TaskStatus;
+  priority?: TaskPriority;
+};
+
+export async function getTasks(): Promise<Task[]> {
     try {
         const response = await fetch(
       `${API_BASE_URL}/tasks`,
@@ -20,18 +42,7 @@ export async function getTasks() {
         return [];
     }
 }
-export async function createTask(data: {
-  title: string;
-  description: string;
-  status: string;
-  priority: string;
-  projectId: string;
-  subtasks: Array<{
-    title: string;
-    status: string;
-    priority: string;
-  }>;
-}) {
+export async function createTask(data: CreateTaskInput): Promise<Task> {
 
   const response = await fetch(
     `${API_BASE_URL}/tasks`,
@@ -49,13 +60,8 @@ export async function createTask(data: {
 
 export async function updateTask(
   id: string,
-  data: {
-    title: string;
-    description: string;
-    status: string;
-    priority: string;
-  }
-) {
+  data: UpdateTaskInput
+): Promise<Task> {
   const response = await fetch(`${API_BASE_URL}/tasks/${id}`, {
     method: "PUT",
     headers: {
@@ -65,6 +71,10 @@ export async function updateTask(
   });
 
   return response.json();
+}
+
+export async function moveTask(id: string, status: TaskStatus): Promise<Task> {
+  return updateTask(id, { status });
 }
 
 export async function deleteTask(id: string) {

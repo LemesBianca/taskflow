@@ -1,27 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 
 import BoardColumn from "@/components/board/BoardColumn";
 import TaskModal from "@/components/tasks/TaskModal";
 
-import { getTasks } from "@/services/taskService";
+import { getTasks, moveTask } from "@/services/taskService";
+import type { Task, TaskStatus } from "@/types/Task";
+
+const BOARD_COLUMNS: Array<{ title: string; status: TaskStatus }> = [
+  { title: "Todo", status: "TODO" },
+  { title: "In Progress", status: "IN_PROGRESS" },
+  { title: "Done", status: "DONE" },
+];
 
 export default function BoardPage() {
-
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [dragOverStatus, setDragOverStatus] = useState<TaskStatus | null>(null);
 
   useEffect(() => {
-    loadTasks();
+    void getTasks().then((data) => {
+      startTransition(() => {
+        setTasks(data);
+      });
+    });
   }, []);
 
-  async function loadTasks() {
-    const data = await getTasks();
-    setTasks(data);
-  }
-
-  function handleTaskUpdated(updatedTask: any) {
+  function handleTaskUpdated(updatedTask: Task) {
     setTasks((previousTasks) =>
       previousTasks.map((currentTask) =>
         currentTask.id === updatedTask.id
@@ -33,7 +40,7 @@ export default function BoardPage() {
       )
     );
 
-    setSelectedTask((currentSelectedTask: any) =>
+    setSelectedTask((currentSelectedTask) =>
       currentSelectedTask?.id === updatedTask.id
         ? {
             ...currentSelectedTask,
@@ -50,16 +57,98 @@ export default function BoardPage() {
     setSelectedTask(null);
   }
 
-  const todo = tasks.filter(
-    (task) => task.status === "TODO"
-  );
+  function handleTaskDragStart(taskId: string) {
+    setDraggedTaskId(taskId);
+  }
 
-  const inProgress = tasks.filter(
-    (task) => task.status === "IN_PROGRESS"
-  );
+  function handleTaskDragEnd() {
+    setDraggedTaskId(null);
+    setDragOverStatus(null);
+  }
 
-  const done = tasks.filter(
-    (task) => task.status === "DONE"
+  async function handleTaskDrop(nextStatus: TaskStatus) {
+    if (!draggedTaskId) {
+      setDragOverStatus(null);
+      return;
+    }
+
+    const taskToMove = tasks.find((task) => task.id === draggedTaskId);
+
+    setDraggedTaskId(null);
+    setDragOverStatus(null);
+
+    if (!taskToMove || taskToMove.status === nextStatus) {
+      return;
+    }
+
+    const previousStatus = taskToMove.status;
+
+    setTasks((previousTasks) =>
+      previousTasks.map((currentTask) =>
+        currentTask.id === draggedTaskId
+          ? {
+              ...currentTask,
+              status: nextStatus,
+            }
+          : currentTask
+      )
+    );
+
+    setSelectedTask((currentSelectedTask) =>
+      currentSelectedTask?.id === draggedTaskId
+        ? {
+            ...currentSelectedTask,
+            status: nextStatus,
+          }
+        : currentSelectedTask
+    );
+
+    try {
+      const updatedTask = await moveTask(draggedTaskId, nextStatus);
+
+      handleTaskUpdated({
+        ...taskToMove,
+        ...updatedTask,
+        status: updatedTask.status ?? nextStatus,
+      });
+    } catch (error) {
+      console.error("Failed to move task on the board", error);
+
+      setTasks((previousTasks) =>
+        previousTasks.map((currentTask) =>
+          currentTask.id === taskToMove.id
+            ? {
+                ...currentTask,
+                status: previousStatus,
+              }
+            : currentTask
+        )
+      );
+
+      setSelectedTask((currentSelectedTask) =>
+        currentSelectedTask?.id === taskToMove.id
+          ? {
+              ...currentSelectedTask,
+              status: previousStatus,
+            }
+          : currentSelectedTask
+      );
+    }
+  }
+
+  const tasksByStatus = BOARD_COLUMNS.reduce<Record<TaskStatus, Task[]>>(
+    (groupedTasks, column) => {
+      groupedTasks[column.status] = tasks.filter(
+        (task) => task.status === column.status
+      );
+
+      return groupedTasks;
+    },
+    {
+      TODO: [],
+      IN_PROGRESS: [],
+      DONE: [],
+    }
   );
 
   return (
@@ -78,24 +167,21 @@ export default function BoardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-        <BoardColumn
-          title="Todo"
-          tasks={todo}
-          onTaskClick={setSelectedTask}
-        />
-
-        <BoardColumn
-          title="In Progress"
-          tasks={inProgress}
-          onTaskClick={setSelectedTask}
-        />
-
-        <BoardColumn
-          title="Done"
-          tasks={done}
-          onTaskClick={setSelectedTask}
-        />
+        {BOARD_COLUMNS.map((column) => (
+          <BoardColumn
+            key={column.status}
+            title={column.title}
+            status={column.status}
+            tasks={tasksByStatus[column.status]}
+            onTaskClick={setSelectedTask}
+            onTaskDragStart={handleTaskDragStart}
+            onTaskDragEnd={handleTaskDragEnd}
+            onColumnDragOver={setDragOverStatus}
+            onTaskDrop={handleTaskDrop}
+            draggedTaskId={draggedTaskId}
+            isDragOver={dragOverStatus === column.status}
+          />
+        ))}
 
       </div>
 
