@@ -2,10 +2,6 @@
 
 TaskFlow is a full-stack Kanban application inspired by tools like Jira and Trello. It was built as a personal project to practice modern web development, focusing on scalable architecture, clean code, and user experience.
 
-## Preview
-
-![TaskFlow Preview](./public/preview.png)
-
 ## Features
 
 - Kanban board with drag-and-drop
